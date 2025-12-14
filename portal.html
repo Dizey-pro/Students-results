@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shungu High School Portal</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        blue: {
+                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
+                            500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS -->
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); }
+        @media print { 
+            body { background-color: white; }
+            .print\:hidden { display: none !important; }
+            .print\:text-black { color: black !important; }
+        }
+    </style>
+
+    <!-- React & ReactDOM -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.344.0?deps=react@18.2.0"
+        }
+    }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useMemo } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            BookOpen, Users, GraduationCap, Upload, LogOut, TrendingUp, Search, 
+            Bell, Menu, X, FileText, User, CheckCircle, AlertCircle, School, 
+            Lock, Mail, Phone, Shield, Clock, Calendar, Edit2, Trash2, 
+            PlusCircle, Save, Filter, UserPlus, List, Database, Printer, 
+            Sparkles, Lightbulb, BrainCircuit, Key, Download, Code, Plus
+        } from 'lucide-react';
+
+        // --- APP CONFIGURATION ---
+        const appId = "shungu-portal-local"; 
+
+        // --- INITIAL DATA ---
+        const INITIAL_STUDENTS = [
+            { id: '1', name: 'Alex Johnson', studentId: 'ST-2024-001', level: 'ZJC', className: '1A', email: 'alex@shungu.edu' },
+            { id: '2', name: 'Sarah Williams', studentId: 'ST-2024-002', level: 'O Level', className: '3 Sciences', email: 'sarah@shungu.edu' },
+            { id: '3', name: 'Michael Brown', studentId: 'ST-2024-003', level: 'A Level', className: 'Lower 6 Arts', email: 'michael@shungu.edu' }
+        ];
+
+        const INITIAL_RESULTS = [
+            { id: '101', studentName: 'Alex Johnson', studentId: 'ST-2024-001', level: 'ZJC', className: '1A', subject: 'Mathematics', score: 85, grade: 'A', term: 'Term 1', year: '2025' },
+            { id: '102', studentName: 'Alex Johnson', studentId: 'ST-2024-001', level: 'ZJC', className: '1A', subject: 'English', score: 78, grade: 'B', term: 'Term 1', year: '2025' },
+            { id: '103', studentName: 'Alex Johnson', studentId: 'ST-2024-001', level: 'ZJC', className: '1A', subject: 'Geography', score: 92, grade: 'A', term: 'Term 1', year: '2025' },
+            { id: '104', studentName: 'Sarah Williams', studentId: 'ST-2024-002', level: 'O Level', className: '3 Sciences', subject: 'Physics', score: 92, grade: 'A+', term: 'Term 1', year: '2025' }
+        ];
+
+        const INITIAL_TEACHER_AUTH = { username: 'SHS-STAFF', password: '@TEACHER-SECURE-25' };
+
+        const ACADEMIC_LEVELS = {
+            "ZJC": ["1A", "1B", "2A", "2B"],
+            "O Level": ["3 Sciences", "3 Commercials", "3 Arts", "4 Sciences", "4 Commercials", "4 Arts"],
+            "A Level": ["Lower 6 Sciences", "Lower 6 Commercials", "Lower 6 Arts", "Upper 6 Sciences", "Upper 6 Commercials", "Upper 6 Arts"]
+        };
+
+        const O_LEVEL_SUBJECTS = {
+            "ZJC": ["English", "Shona", "Heritage", "Combined Science", "Computer Science", "Geography", "FRS", "History", "Mathematics", "Accounts", "Agriculture"],
+            "Sciences": ["Mathematics", "Heritage", "Combined Science", "Computer Science", "English", "Physics", "Biology", "Agriculture", "Geography", "Chemistry"],
+            "Commercials": ["Mathematics", "English", "Heritage", "Combined Science", "Computer Science", "Geography", "Accounts", "Business Studies", "Economics"],
+            "Arts": ["Mathematics", "English", "Heritage", "Combined Science", "Shona", "History", "Sociology", "FRS", "Literature in English", "Literature in Shona"]
+        };
+
+        const A_LEVEL_SUBJECTS = {
+            "Sciences": ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Geography", "Agriculture"],
+            "Commercials": ["Mathematics", "Accounts", "Business Studies", "Economics", "Computer Science", "Geography"],
+            "Arts": ["History", "Sociology", "FRS", "Literature in English", "Literature in Shona", "Geography", "Shona"]
+        };
+
+        const ALL_POSSIBLE_SUBJECTS = Array.from(new Set([
+            ...O_LEVEL_SUBJECTS["ZJC"], ...O_LEVEL_SUBJECTS["Sciences"], ...O_LEVEL_SUBJECTS["Commercials"], ...O_LEVEL_SUBJECTS["Arts"],
+            ...A_LEVEL_SUBJECTS["Sciences"], ...A_LEVEL_SUBJECTS["Commercials"], ...A_LEVEL_SUBJECTS["Arts"], "Art & Design"
+        ])).sort();
+
+        // --- UTILS ---
+        const calculateGrade = (score) => {
+            if (score >= 90) return 'A+'; if (score >= 80) return 'A'; if (score >= 70) return 'B';
+            if (score >= 60) return 'C'; if (score >= 50) return 'D'; return 'F';
+        };
+
+        const getGradeColor = (grade) => {
+            if (grade.startsWith('A')) return 'text-green-600 bg-green-50';
+            if (grade.startsWith('B')) return 'text-blue-600 bg-blue-50';
+            if (grade.startsWith('C')) return 'text-yellow-600 bg-yellow-50';
+            if (grade.startsWith('D')) return 'text-orange-600 bg-orange-50';
+            return 'text-red-600 bg-red-50';
+        };
+
+        const getSubjectsForClass = (className) => {
+            if (!className) return ALL_POSSIBLE_SUBJECTS;
+            const normalizedClass = className.toLowerCase();
+            
+            if (normalizedClass.includes('lower 6') || normalizedClass.includes('upper 6')) {
+                if (normalizedClass.includes('sciences')) return A_LEVEL_SUBJECTS["Sciences"];
+                if (normalizedClass.includes('commercials')) return A_LEVEL_SUBJECTS["Commercials"];
+                if (normalizedClass.includes('arts')) return A_LEVEL_SUBJECTS["Arts"];
+            } else {
+                if (normalizedClass.includes('sciences')) return O_LEVEL_SUBJECTS["Sciences"];
+                if (normalizedClass.includes('commercials')) return O_LEVEL_SUBJECTS["Commercials"];
+                if (normalizedClass.includes('arts')) return O_LEVEL_SUBJECTS["Arts"];
+            }
+            if (normalizedClass.startsWith('1') || normalizedClass.startsWith('2')) {
+                return O_LEVEL_SUBJECTS["ZJC"];
+            }
+            return ALL_POSSIBLE_SUBJECTS;
+        };
+
+        // --- LOCAL STORAGE HELPERS ---
+        const loadFromStorage = (key, defaultVal) => {
+            const stored = localStorage.getItem(`shungu_${key}`);
+            return stored ? JSON.parse(stored) : defaultVal;
+        };
+        const saveToStorage = (key, data) => localStorage.setItem(`shungu_${key}`, JSON.stringify(data));
+
+        // --- COMPONENTS ---
+
+        // 1. LOGIN
+        const LoginScreen = ({ onLogin, teacherCredentials }) => {
+            const [selectedRole, setSelectedRole] = useState(null);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError('');
+                setTimeout(() => {
+                    let success = false;
+                    if (selectedRole === 'student') success = true; 
+                    else if (selectedRole === 'admin' && username === 'ADMIN' && password === '@SECRETARY-001') success = true;
+                    else if (selectedRole === 'teacher' && username === teacherCredentials.username && password === teacherCredentials.password) success = true;
+                    else setError('Invalid credentials');
+
+                    if (success) onLogin(selectedRole, username || 'Student');
+                    else setLoading(false);
+                }, 600);
+            };
+
+            const getPasswordLabel = () => {
+                if (selectedRole === 'student') return 'Password (Student ID)';
+                if (selectedRole === 'admin') return 'Password';
+                return 'Password (Shared Key)';
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                    <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[550px]">
+                        <div className="w-full md:w-1/2 bg-blue-900 p-12 text-white flex flex-col justify-between relative overflow-hidden">
+                            <div className="relative z-10">
+                                <School className="w-16 h-16 mb-6" />
+                                <h1 className="text-4xl font-bold mb-4">Shungu High School</h1>
+                                <p className="text-blue-200 text-lg">Secure Access Portal</p>
+                            </div>
+                            <div className="relative z-10 text-sm text-blue-300">
+                                &copy; 2025 Shungu Education Systems. <br/>Authorized personnel only.
+                            </div>
+                        </div>
+                        <div className="w-full md:w-1/2 p-12 flex flex-col justify-center">
+                            {!selectedRole ? (
+                                <div className="animate-fade-in">
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Select Portal</h2>
+                                    <p className="text-slate-500 mb-8">Choose your role to sign in securely.</p>
+                                    <div className="space-y-4">
+                                        <button onClick={() => setSelectedRole('student')} className="w-full p-4 border border-slate-200 rounded-xl flex items-center hover:border-blue-500 hover:bg-blue-50 transition-all group">
+                                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600"><GraduationCap size={24} /></div>
+                                            <div className="ml-4 text-left"><h3 className="font-semibold text-slate-800">Student</h3></div>
+                                        </button>
+                                        <button onClick={() => setSelectedRole('teacher')} className="w-full p-4 border border-slate-200 rounded-xl flex items-center hover:border-emerald-500 hover:bg-emerald-50 transition-all group">
+                                            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600"><BookOpen size={24} /></div>
+                                            <div className="ml-4 text-left"><h3 className="font-semibold text-slate-800">Teacher</h3></div>
+                                        </button>
+                                        <button onClick={() => setSelectedRole('admin')} className="w-full p-4 border border-slate-200 rounded-xl flex items-center hover:border-purple-500 hover:bg-purple-50 transition-all group">
+                                            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-600"><Users size={24} /></div>
+                                            <div className="ml-4 text-left"><h3 className="font-semibold text-slate-800">Administrator</h3></div>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="animate-fade-in">
+                                    <button onClick={() => { setSelectedRole(null); setUsername(''); setPassword(''); setError(''); }} className="flex items-center text-sm text-slate-400 hover:text-slate-600 mb-6 transition-colors"><X size={16} className="mr-1" /> Cancel</button>
+                                    <div className="flex items-center mb-6">
+                                        <div className={`p-3 rounded-xl mr-4 text-blue-600 bg-blue-50`}><School size={32} /></div>
+                                        <div><h2 className="text-2xl font-bold text-slate-800 capitalize">{selectedRole} Login</h2></div>
+                                    </div>
+                                    {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center"><AlertCircle size={16} className="mr-2" />{error}</div>}
+                                    <form onSubmit={handleLogin} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                                            <input type="text" required className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder={selectedRole === 'admin' ? 'ADMIN' : selectedRole === 'teacher' ? 'SHS-STAFF' : 'Alex Johnson'} value={username} onChange={(e) => setUsername(e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">{getPasswordLabel()}</label>
+                                            <input type="password" required className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder={selectedRole === 'admin' ? '@SECRETARY-001' : selectedRole === 'teacher' ? '@TEACHER-SECURE-25' : 'ST-2024-001'} value={password} onChange={(e) => setPassword(e.target.value)} />
+                                        </div>
+                                        <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50">{loading ? 'Signing In...' : 'Sign In'}</button>
+                                    </form>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. ADMIN DASHBOARD
+        const AdminDashboard = ({ results, students, teacherCredentials, onAddStudent, onUpdateStudent, onDeleteStudent, onUpdateTeacherAuth }) => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [activeTab, setActiveTab] = useState('All');
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [editingStudent, setEditingStudent] = useState(null);
+            
+            // Modal Form State
+            const [formData, setFormData] = useState({ name: '', studentId: '', level: 'ZJC', className: '1A', email: '' });
+
+            // Class 2B Data embedded here for Admin utility
+            const CLASS_2B_NAMES = [
+                "Chabata Makomborero", "Chiduku Bonwell", "Chikowe Abel", "Chiviya Mudiwa", "Gatsi Pristine",
+                "Gumbo Nashe", "Gwasira Munashe", "Hondo Kelvin", "Jaru Edward", "Kambezo Mathew",
+                "Kawadza Darrel", "Liomba Prudence B", "Mabena Darrel", "Mahwinha Hillary", "Makaurire Tanatswa",
+                "Makore Timukudzei E", "Mapope Nyasha", "Mapurisa Pride", "Maravanyika Tanaka", "Masukume Efficiency",
+                "Masviba Atipaishe", "Matamba Malcom", "Matashu Ashton", "Matiza Frank", "Mazoyo Mufaro",
+                "Mpofu Revelry", "Mukoyi Simon", "Munatswa Albert T", "Muronza Alvin", "Musheche Shequa",
+                "Musiyiwa Emmanuel", "Mutangi Kenyata", "Mutero Tawongaishe", "Muwani Lewis", "Muzenda Kupakwashe",
+                "Ndumo Anotidaishe", "Nyamadzawo Tatenda", "Nyathi Eli", "Phillip Anesu", "Phiri James T", "Poshiwa Ryan"
+            ];
+
+            // Open Modal for Add
+            const openAddModal = () => {
+                setEditingStudent(null);
+                setFormData({ name: '', studentId: '', level: 'ZJC', className: '1A', email: '' });
+                setIsModalOpen(true);
+            };
+
+            // Open Modal for Edit
+            const openEditModal = (student) => {
+                setEditingStudent(student);
+                setFormData(student);
+                setIsModalOpen(true);
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (editingStudent) {
+                    onUpdateStudent(editingStudent.id, formData);
+                } else {
+                    onAddStudent(formData);
+                }
+                setIsModalOpen(false);
+            };
+
+            // Update class dropdown when level changes
+            useEffect(() => {
+                const validClasses = ACADEMIC_LEVELS[formData.level] || [];
+                if (!validClasses.includes(formData.className)) {
+                    setFormData(prev => ({ ...prev, className: validClasses[0] || '' }));
+                }
+            }, [formData.level]);
+
+            const handleImport2B = () => {
+                if (!confirm(`Import ${CLASS_2B_NAMES.length} students to Class 2B?`)) return;
+                CLASS_2B_NAMES.forEach((name, i) => {
+                    const studentId = `ST-25-2B-${(i + 1).toString().padStart(2, '0')}`;
+                    if (!students.some(s => s.studentId === studentId)) {
+                        onAddStudent({ name, studentId, level: 'ZJC', className: '2B', email: `${name.split(' ')[0].toLowerCase()}@shungu.edu` });
+                    }
+                });
+                alert("Class 2B Imported!");
+            };
+
+            // Filter logic
+            const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.studentId.toLowerCase().includes(searchTerm.toLowerCase()));
+            const displayedStudents = activeTab === 'All' ? filteredStudents : filteredStudents.filter(s => `${s.level} - ${s.className}` === activeTab);
+            const sortedStudents = [...displayedStudents].sort((a,b) => a.name.localeCompare(b.name));
+            const classTabs = ['All', ...Object.keys(ACADEMIC_LEVELS).flatMap(level => ACADEMIC_LEVELS[level].map(cls => `${level} - ${cls}`))];
+
+            return (
+                <div className="space-y-8 animate-fade-in relative">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold text-slate-800">Admin Dashboard</h2>
+                        <div className="flex gap-2">
+                             <button onClick={handleImport2B} className="flex items-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors border border-blue-200">
+                                <Database size={16} className="mr-2"/> Import Class 2B
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Teacher Auth Mini-Section */}
+                    <div className="bg-slate-800 text-white p-4 rounded-xl flex items-center justify-between">
+                         <div className="flex items-center">
+                            <Key size={20} className="mr-3 text-blue-400"/>
+                            <div>
+                                <h4 className="font-bold text-sm">Teacher Login</h4>
+                                <p className="text-xs text-slate-400">Username: {teacherCredentials.username} • Password: {teacherCredentials.password}</p>
+                            </div>
+                         </div>
+                         <button onClick={() => {
+                             const u = prompt("New Teacher Username:", teacherCredentials.username);
+                             const p = prompt("New Teacher Password:", teacherCredentials.password);
+                             if(u && p) onUpdateTeacherAuth({username: u, password: p});
+                         }} className="text-xs bg-slate-700 px-3 py-1 rounded hover:bg-slate-600">Change</button>
+                    </div>
+
+                    {/* Directory Table */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col h-[600px]">
+                        <div className="p-4 border-b bg-white sticky top-0 z-10">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-4">
+                                     <h3 className="font-bold text-lg text-slate-800">Student Directory ({students.length})</h3>
+                                     <button onClick={openAddModal} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                                        <Plus size={16} className="mr-1"/> Add Student
+                                     </button>
+                                </div>
+                                <div className="relative">
+                                    <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Search..." className="pl-9 pr-4 py-1.5 border rounded-lg text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+                                {classTabs.map(tab => (
+                                    <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{tab}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="overflow-y-auto flex-1">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold sticky top-0">
+                                    <tr><th className="p-3 pl-6">Name (Username)</th><th className="p-3">Class</th><th className="p-3">ID (Password)</th><th className="p-3 text-right pr-6">Actions</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {sortedStudents.map(s => (
+                                        <tr key={s.id} className="hover:bg-slate-50 group">
+                                            <td className="p-3 pl-6 font-medium text-slate-800">{s.name}</td>
+                                            <td className="p-3 text-slate-600"><span className="px-2 py-0.5 rounded bg-slate-100 border text-xs">{s.level} - {s.className}</span></td>
+                                            <td className="p-3 font-mono text-slate-500">{s.studentId}</td>
+                                            <td className="p-3 text-right pr-6">
+                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => openEditModal(s)} className="text-blue-600 hover:bg-blue-50 p-1.5 rounded" title="Edit"><Edit2 size={16}/></button>
+                                                    <button onClick={() => { if(confirm('Delete student?')) onDeleteStudent(s.id) }} className="text-red-600 hover:bg-red-50 p-1.5 rounded" title="Delete"><Trash2 size={16}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {sortedStudents.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400">No students found.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* MODAL */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+                                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h3 className="font-bold text-lg text-slate-800">{editingStudent ? 'Edit Student' : 'Add New Student'}</h3>
+                                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                                </div>
+                                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Full Name (Username)</label>
+                                        <input type="text" required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. John Doe" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Student ID (Password)</label>
+                                        <input type="text" required className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono" value={formData.studentId} onChange={e => setFormData({...formData, studentId: e.target.value})} placeholder="e.g. ST-2025-001" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Level</label>
+                                            <select className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.level} onChange={e => setFormData({...formData, level: e.target.value})}>{Object.keys(ACADEMIC_LEVELS).map(l => <option key={l} value={l}>{l}</option>)}</select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Class</label>
+                                            <select className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})}>{ACADEMIC_LEVELS[formData.level]?.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors mt-2">{editingStudent ? 'Save Changes' : 'Create Account'}</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 3. TEACHER DASHBOARD - UPDATED: MATRIX VIEW
+        const TeacherDashboard = ({ results, students, onSubmitResult, onUpdateResult }) => {
+            const currentYearStr = new Date().getFullYear().toString();
+            const [selectedLevel, setSelectedLevel] = useState('ZJC');
+            const [selectedClass, setSelectedClass] = useState('1A');
+            const [selectedTerm, setSelectedTerm] = useState('Term 1');
+            const [selectedYear, setSelectedYear] = useState(currentYearStr);
+            
+            // Custom subjects added by teacher during this session
+            const [customSubjects, setCustomSubjects] = useState([]);
+            
+            // State for the entire grid of marks: { "studentId_subjectName": "85" }
+            const [marksGrid, setMarksGrid] = useState({});
+            
+            const [loading, setLoading] = useState(false);
+
+            // Filter students for current class
+            const classStudents = useMemo(() => {
+                return students
+                    .filter(s => s.level === selectedLevel && s.className === selectedClass)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+            }, [students, selectedLevel, selectedClass]);
+
+            // Combine standard subjects + custom added ones
+            const displaySubjects = useMemo(() => {
+                const standard = getSubjectsForClass(selectedClass);
+                return [...new Set([...standard, ...customSubjects])];
+            }, [selectedClass, customSubjects]);
+
+            // Load existing marks into the grid when context changes
+            useEffect(() => {
+                const grid = {};
+                results.forEach(r => {
+                    if (r.className === selectedClass && r.term === selectedTerm && r.year === selectedYear) {
+                        grid[`${r.studentId}_${r.subject}`] = r.score.toString();
+                    }
+                });
+                setMarksGrid(grid);
+            }, [results, selectedClass, selectedTerm, selectedYear]);
+
+            // Handle cell edit
+            const handleCellChange = (studentId, subject, val) => {
+                setMarksGrid(prev => ({
+                    ...prev,
+                    [`${studentId}_${subject}`]: val
+                }));
+            };
+
+            // Add a new column
+            const handleAddSubject = () => {
+                const sub = prompt("Enter new subject name:");
+                if (sub && !displaySubjects.includes(sub)) {
+                    setCustomSubjects(prev => [...prev, sub]);
+                }
+            };
+
+            // Save entire grid
+            const handlePublishAll = () => {
+                setLoading(true);
+                let count = 0;
+                
+                classStudents.forEach(student => {
+                    displaySubjects.forEach(subject => {
+                        const scoreStr = marksGrid[`${student.studentId}_${subject}`];
+                        if (scoreStr === undefined || scoreStr === "") return; // Skip empty cells
+
+                        const scoreNum = Number(scoreStr);
+                        const grade = calculateGrade(scoreNum);
+
+                        // Check if result exists to update, else create
+                        const existing = results.find(r => 
+                            r.studentId === student.studentId && 
+                            r.subject === subject &&
+                            r.term === selectedTerm &&
+                            r.year === selectedYear
+                        );
+
+                        const payload = {
+                            studentName: student.name,
+                            studentId: student.studentId,
+                            level: selectedLevel,
+                            className: selectedClass,
+                            subject: subject,
+                            term: selectedTerm,
+                            year: selectedYear,
+                            score: scoreNum,
+                            grade: grade
+                        };
+
+                        if (existing) {
+                            if (existing.score !== scoreNum) onUpdateResult(existing.id, payload);
+                        } else {
+                            onSubmitResult(payload);
+                        }
+                        count++;
+                    });
+                });
+                
+                setTimeout(() => {
+                    setLoading(false);
+                    alert(`Published ${count} marks successfully!`);
+                }, 800);
+            };
+
+            return (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        {/* Header Controls */}
+                        <div className="flex flex-wrap justify-between items-end mb-6 gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center mb-4">
+                                    <List className="mr-2 text-blue-600" size={24} /> Class Gradebook
+                                </h2>
+                                <div className="flex gap-2">
+                                    <select className="p-2 border rounded text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500" value={selectedLevel} onChange={e => { setSelectedLevel(e.target.value); setSelectedClass(ACADEMIC_LEVELS[e.target.value][0]); }}>
+                                        {Object.keys(ACADEMIC_LEVELS).map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
+                                    </select>
+                                    <select className="p-2 border rounded text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
+                                        {ACADEMIC_LEVELS[selectedLevel].map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <select className="p-2 border rounded text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500" value={selectedTerm} onChange={e => setSelectedTerm(e.target.value)}>
+                                        <option>Term 1</option><option>Term 2</option><option>Term 3</option>
+                                    </select>
+                                    <input type="text" className="p-2 border rounded text-sm w-20 font-medium outline-none focus:ring-2 focus:ring-blue-500" value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={handleAddSubject} className="flex items-center px-4 py-2 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 text-sm font-medium">
+                                    <Plus size={16} className="mr-2"/> Add Subject
+                                </button>
+                                <button onClick={handlePublishAll} disabled={loading} className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium text-sm disabled:opacity-50">
+                                    <Save size={16} className="mr-2"/> {loading ? 'Saving...' : 'Publish All Changes'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Matrix Table */}
+                        <div className="border border-slate-200 rounded-lg overflow-x-auto max-h-[600px]">
+                            <table className="w-full text-left border-collapse min-w-max">
+                                <thead className="bg-slate-50 text-slate-600 text-xs uppercase font-bold sticky top-0 z-20 shadow-sm">
+                                    <tr>
+                                        <th className="p-3 border-r border-b border-slate-200 w-12 text-center sticky left-0 bg-slate-50 z-30">#</th>
+                                        <th className="p-3 border-r border-b border-slate-200 min-w-[200px] sticky left-12 bg-slate-50 z-30 shadow-r">Student Name</th>
+                                        {displaySubjects.map(sub => (
+                                            <th key={sub} className="p-3 border-r border-b border-slate-200 w-24 text-center whitespace-nowrap overflow-hidden text-ellipsis" title={sub}>{sub}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {classStudents.length > 0 ? classStudents.map((student, idx) => (
+                                        <tr key={student.studentId} className="hover:bg-slate-50 group">
+                                            <td className="p-2 text-center text-slate-400 text-xs border-r border-slate-100 sticky left-0 bg-white group-hover:bg-slate-50 z-10">{idx + 1}</td>
+                                            <td className="p-2 font-medium text-slate-800 text-sm border-r border-slate-100 sticky left-12 bg-white group-hover:bg-slate-50 z-10 shadow-r">
+                                                {student.name}
+                                                <div className="text-[10px] text-slate-400 font-mono">{student.studentId}</div>
+                                            </td>
+                                            {displaySubjects.map(sub => (
+                                                <td key={sub} className="p-1 border-r border-slate-100 text-center">
+                                                    <input 
+                                                        type="number" min="0" max="100" 
+                                                        className="w-full h-full p-2 text-center text-sm focus:outline-none focus:bg-blue-50 transition-colors bg-transparent font-medium"
+                                                        value={marksGrid[`${student.studentId}_${sub}`] || ''}
+                                                        onChange={(e) => handleCellChange(student.studentId, sub, e.target.value)}
+                                                        placeholder="-"
+                                                    />
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={displaySubjects.length + 2} className="p-12 text-center text-slate-400">
+                                                No students found in {selectedClass}. <br/> Please ask the Administrator to register students first.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 4. STUDENT DASHBOARD
+        const StudentDashboard = ({ results, studentId }) => {
+            const myResults = results.filter(r => r.studentId === studentId);
+            return (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <h2 className="text-xl font-bold text-slate-800 mb-4">My Results</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 text-slate-500 text-sm uppercase"><tr><th className="p-3">Subject</th><th className="p-3">Score</th><th className="p-3">Grade</th></tr></thead>
+                                <tbody className="divide-y">
+                                    {myResults.map(r => (
+                                        <tr key={r.id}>
+                                            <td className="p-3 font-medium">{r.subject}</td>
+                                            <td className="p-3">{r.score}%</td>
+                                            <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-bold ${getGradeColor(r.grade)}`}>{r.grade}</span></td>
+                                        </tr>
+                                    ))}
+                                    {myResults.length === 0 && <tr><td colSpan={3} className="p-8 text-center text-slate-400">No results yet.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. APP CONTAINER
+        const App = () => {
+            // Lazy load state from LocalStorage to ensure persistence across refreshes
+            const [userProfile, setUserProfile] = useState(null);
+            const [activeRole, setActiveRole] = useState(null);
+            
+            // --- CORE DATA STATE (PERSISTENT) ---
+            const [results, setResults] = useState(() => loadFromStorage('results', INITIAL_RESULTS));
+            const [students, setStudents] = useState(() => loadFromStorage('students', INITIAL_STUDENTS));
+            const [teacherCredentials, setTeacherCredentials] = useState(() => loadFromStorage('teacherAuth', INITIAL_TEACHER_AUTH));
+            const [activeSection, setActiveSection] = useState('dashboard');
+
+            // Save to LocalStorage whenever state changes
+            useEffect(() => saveToStorage('results', results), [results]);
+            useEffect(() => saveToStorage('students', students), [students]);
+            useEffect(() => saveToStorage('teacherAuth', teacherCredentials), [teacherCredentials]);
+
+            const handleLogin = (role, name) => {
+                setActiveRole(role);
+                setActiveSection('dashboard');
+                // Auto-detect student ID
+                let sid = role === 'student' ? (students.find(s => s.name.toLowerCase() === name.toLowerCase())?.studentId || 'UNKNOWN') : '';
+                setUserProfile({ name, role, studentId: sid });
+            };
+
+            const handleLogout = () => { setActiveRole(null); setUserProfile(null); };
+
+            // CRUD Handlers
+            const handleAddStudent = (d) => setStudents(p => [...p, { ...d, id: Date.now().toString() }]);
+            const handleUpdateStudent = (id, d) => setStudents(p => p.map(s => s.id === id ? { ...s, ...d } : s));
+            const handleDeleteStudent = (id) => setStudents(p => p.filter(s => s.id !== id));
+            const handleUploadResult = (d) => setResults(p => [...p, { ...d, id: Date.now().toString() }]);
+            const handleUpdateResult = (id, d) => setResults(p => p.map(r => r.id === id ? { ...r, ...d } : r));
+            const handleUpdateTeacherAuth = (d) => setTeacherCredentials(d);
+
+            if (!activeRole) return <LoginScreen onLogin={handleLogin} teacherCredentials={teacherCredentials} />;
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex font-sans">
+                    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col fixed h-full z-10">
+                        <div className="p-6 flex-1">
+                            <div className="flex items-center space-x-3 mb-10 text-blue-600"><School size={32}/><span className="font-bold text-xl text-slate-800">Shungu</span></div>
+                            <nav className="space-y-2">
+                                <button onClick={() => setActiveSection('dashboard')} className={`w-full flex items-center p-3 rounded-lg font-medium ${activeSection==='dashboard'?'bg-blue-50 text-blue-700':'text-slate-600'}`}><div className="mr-3">{activeRole==='student'?<GraduationCap size={20}/>:activeRole==='teacher'?<BookOpen size={20}/>:<Users size={20}/>}</div> Dashboard</button>
+                                {activeRole === 'student' && <button onClick={() => setActiveSection('transcripts')} className={`w-full flex items-center p-3 rounded-lg font-medium ${activeSection==='transcripts'?'bg-blue-50 text-blue-700':'text-slate-600'}`}><FileText size={20} className="mr-3"/> Transcripts</button>}
+                            </nav>
+                        </div>
+                        <div className="p-4 border-t"><button onClick={handleLogout} className="w-full flex justify-center p-2 rounded-lg border text-slate-600 hover:bg-slate-50 text-sm font-medium"><LogOut size={16} className="mr-2"/> Sign Out</button></div>
+                    </aside>
+                    <main className="flex-1 ml-64 p-8">
+                        <header className="flex justify-between mb-8">
+                            <h2 className="text-2xl font-bold text-slate-800 capitalize">{activeRole} Dashboard</h2>
+                            <div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">{userProfile?.name?.charAt(0)}</div><span className="font-medium text-slate-700">{userProfile?.name}</span></div>
+                        </header>
+                        {activeSection === 'transcripts' && <StudentDashboard results={results} studentId={userProfile.studentId} />} 
+                        {activeSection === 'dashboard' && activeRole === 'admin' && <AdminDashboard results={results} students={students} teacherCredentials={teacherCredentials} onAddStudent={handleAddStudent} onUpdateStudent={handleUpdateStudent} onDeleteStudent={handleDeleteStudent} onUpdateTeacherAuth={handleUpdateTeacherAuth} />}
+                        {activeSection === 'dashboard' && activeRole === 'teacher' && <TeacherDashboard results={results} students={students} onSubmitResult={handleUploadResult} onUpdateResult={handleUpdateResult} />}
+                        {activeSection === 'dashboard' && activeRole === 'student' && <StudentDashboard results={results} studentId={userProfile.studentId} />}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
